@@ -4,3 +4,4 @@ streamlit
 pandas
 openpyxl
 pytest
+ruff

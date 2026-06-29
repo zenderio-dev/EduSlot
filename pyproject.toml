@@ -1,0 +1,9 @@
+[project]
+name = "eduslot"
+version = "0.1.0"
+description = "Automatic timetable generation module for educational groups, teachers, workloads, constraints, and conflict detection."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

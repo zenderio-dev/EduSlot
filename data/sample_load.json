@@ -1,0 +1,38 @@
+{
+  "groups": [
+    {
+      "name": "Group A",
+      "lessons": [
+        {
+          "subject": "Python",
+          "teacher": "Ivanov",
+          "lessons_per_week": 2,
+          "lesson_type": "practice"
+        },
+        {
+          "subject": "Databases",
+          "teacher": "Petrov",
+          "lessons_per_week": 3,
+          "lesson_type": "lecture"
+        }
+      ]
+    },
+    {
+      "name": "Group B",
+      "lessons": [
+        {
+          "subject": "Web Development",
+          "teacher": "Sidorov",
+          "lessons_per_week": 2,
+          "lesson_type": "practice"
+        },
+        {
+          "subject": "Databases",
+          "teacher": "Petrov",
+          "lessons_per_week": 2,
+          "lesson_type": "practice"
+        }
+      ]
+    }
+  ]
+}

@@ -4,10 +4,11 @@ from eduslot.models import (
     GroupLoad,
     LessonLoad,
     PreferencesInput,
+    ScheduleItem,
     TeacherPreferenceInput,
     WorkloadInput,
 )
-from eduslot.solver import generate_schedule
+from eduslot.solver import generate_schedule, generate_schedule_variants
 
 
 def test_generate_schedule_assigns_every_lesson_once():
@@ -277,3 +278,176 @@ def test_generate_schedule_uses_full_grid_when_teacher_has_no_preference():
         "Пожелания преподавателей не заданы. "
         "Для всех преподавателей используется полная сетка расписания."
     ]
+
+
+def test_generate_schedule_variants_returns_requested_number_of_variants():
+    workload = WorkloadInput(
+        groups=[
+            GroupLoad(
+                name="Group A",
+                lessons=[
+                    LessonLoad(
+                        subject="Python",
+                        teacher="Ivanov",
+                        lessons_per_week=1,
+                    ),
+                    LessonLoad(
+                        subject="Databases",
+                        teacher="Petrov",
+                        lessons_per_week=1,
+                    ),
+                ],
+            )
+        ]
+    )
+    preferences = PreferencesInput(
+        preferences=[
+            TeacherPreferenceInput(
+                teacher="Ivanov",
+                text="понедельник",
+            ),
+            TeacherPreferenceInput(
+                teacher="Petrov",
+                text="понедельник",
+            ),
+        ]
+    )
+
+    variants = generate_schedule_variants(
+        workload=workload,
+        preferences=preferences,
+        max_variants=3,
+    )
+
+    assert len(variants) == 3
+    assert all(variant.conflicts == [] for variant in variants)
+    assert all(len(variant.schedule) == 2 for variant in variants)
+
+    signatures = {
+        _build_test_schedule_signature(variant.schedule)
+        for variant in variants
+    }
+
+    assert len(signatures) == 3
+
+
+def test_generate_schedule_variants_returns_fewer_when_no_more_variants_exist():
+    workload = WorkloadInput(
+        groups=[
+            GroupLoad(
+                name="Group A",
+                lessons=[
+                    LessonLoad(
+                        subject="Python",
+                        teacher="Ivanov",
+                        lessons_per_week=1,
+                    )
+                ],
+            )
+        ]
+    )
+    preferences = PreferencesInput(
+        preferences=[
+            TeacherPreferenceInput(
+                teacher="Ivanov",
+                text="понедельник с 09:00 до 10:30",
+            )
+        ]
+    )
+
+    variants = generate_schedule_variants(
+        workload=workload,
+        preferences=preferences,
+        max_variants=3,
+    )
+
+    assert len(variants) == 1
+    assert variants[0].conflicts == []
+    assert len(variants[0].schedule) == 1
+
+
+def test_generate_schedule_variants_returns_conflict_when_schedule_is_impossible():
+    workload = WorkloadInput(
+        groups=[
+            GroupLoad(
+                name="Group A",
+                lessons=[
+                    LessonLoad(
+                        subject="Python",
+                        teacher="Ivanov",
+                        lessons_per_week=1,
+                    ),
+                    LessonLoad(
+                        subject="Databases",
+                        teacher="Petrov",
+                        lessons_per_week=1,
+                    ),
+                ],
+            )
+        ]
+    )
+    preferences = PreferencesInput(
+        preferences=[
+            TeacherPreferenceInput(
+                teacher="Ivanov",
+                text="понедельник с 09:00 до 10:30",
+            ),
+            TeacherPreferenceInput(
+                teacher="Petrov",
+                text="понедельник с 09:00 до 10:30",
+            ),
+        ]
+    )
+
+    variants = generate_schedule_variants(
+        workload=workload,
+        preferences=preferences,
+        max_variants=3,
+    )
+
+    assert len(variants) == 1
+    assert variants[0].schedule == []
+    assert len(variants[0].conflicts) == 1
+    assert variants[0].conflicts[0].type == "no_valid_schedule"
+
+
+def test_generate_schedule_variants_returns_empty_list_for_zero_variants():
+    workload = WorkloadInput(
+        groups=[
+            GroupLoad(
+                name="Group A",
+                lessons=[
+                    LessonLoad(
+                        subject="Python",
+                        teacher="Ivanov",
+                        lessons_per_week=1,
+                    )
+                ],
+            )
+        ]
+    )
+    preferences = PreferencesInput(preferences=[])
+
+    variants = generate_schedule_variants(
+        workload=workload,
+        preferences=preferences,
+        max_variants=0,
+    )
+
+    assert variants == []
+
+
+def _build_test_schedule_signature(
+    schedule: list[ScheduleItem],
+) -> frozenset[tuple[str, str, str, str, int, str]]:
+    return frozenset(
+        (
+            item.group,
+            item.subject,
+            item.teacher,
+            item.day,
+            item.slot,
+            item.lesson_type,
+        )
+        for item in schedule
+    )

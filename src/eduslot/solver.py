@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from ortools.sat.python import cp_model
 
@@ -9,7 +10,6 @@ from eduslot.models import (
     PreferencesInput,
     ScheduleItem,
     ScheduleResult,
-    TeacherAvailability,
     TimeSlot,
     WorkloadInput,
 )
@@ -19,8 +19,16 @@ from eduslot.time_grid import get_all_slots
 
 
 SlotKey = tuple[Day, int]
+AssignmentSignature = frozenset[tuple[int, SlotKey]]
+VisibleScheduleSignature = frozenset[tuple[str, str, str, Day, int, str]]
 
 DAY_ORDER: list[Day] = ["mon", "tue", "wed", "thu", "fri"]
+
+
+@dataclass(frozen=True)
+class SolverOutcome:
+    result: ScheduleResult
+    assignment_signature: AssignmentSignature | None = None
 
 
 def generate_schedule(
@@ -28,12 +36,74 @@ def generate_schedule(
     preferences: PreferencesInput,
     max_time_seconds: float = 10.0,
 ) -> ScheduleResult:
+    outcome = _solve_schedule(
+        workload=workload,
+        preferences=preferences,
+        max_time_seconds=max_time_seconds,
+        forbidden_schedules=[],
+    )
+
+    return outcome.result
+
+
+def generate_schedule_variants(
+    workload: WorkloadInput,
+    preferences: PreferencesInput,
+    max_variants: int = 3,
+    max_time_seconds: float = 10.0,
+) -> list[ScheduleResult]:
+    if max_variants <= 0:
+        return []
+
+    variants: list[ScheduleResult] = []
+    forbidden_schedules: list[AssignmentSignature] = []
+    seen_visible_schedules: set[VisibleScheduleSignature] = set()
+
+    max_attempts = max_variants * 5
+
+    for _ in range(max_attempts):
+        if len(variants) >= max_variants:
+            break
+
+        outcome = _solve_schedule(
+            workload=workload,
+            preferences=preferences,
+            max_time_seconds=max_time_seconds,
+            forbidden_schedules=forbidden_schedules,
+        )
+
+        if outcome.result.conflicts:
+            if not variants:
+                variants.append(outcome.result)
+            break
+
+        if outcome.assignment_signature is None:
+            break
+
+        forbidden_schedules.append(outcome.assignment_signature)
+
+        visible_signature = _build_visible_schedule_signature(outcome.result.schedule)
+
+        if visible_signature in seen_visible_schedules:
+            continue
+
+        seen_visible_schedules.add(visible_signature)
+        variants.append(outcome.result)
+
+    return variants
+
+
+def _solve_schedule(
+    workload: WorkloadInput,
+    preferences: PreferencesInput,
+    max_time_seconds: float,
+    forbidden_schedules: list[AssignmentSignature],
+) -> SolverOutcome:
     lesson_units = build_lesson_units(workload)
     all_slots = get_all_slots()
 
     availability_by_teacher, warnings = _build_availability_by_teacher(
         preferences=preferences,
-        fallback_slots=all_slots,
     )
 
     for lesson_unit in lesson_units:
@@ -47,16 +117,19 @@ def generate_schedule(
         availability_by_teacher=availability_by_teacher,
     )
     if no_slot_conflict is not None:
-        return ScheduleResult(
-            schedule=[],
-            warnings=warnings,
-            conflicts=[no_slot_conflict],
+        return SolverOutcome(
+            result=ScheduleResult(
+                schedule=[],
+                warnings=warnings,
+                conflicts=[no_slot_conflict],
+            )
         )
 
     model = cp_model.CpModel()
 
     assignment_vars: dict[tuple[int, SlotKey], cp_model.IntVar] = {}
     lesson_vars: dict[int, list[cp_model.IntVar]] = defaultdict(list)
+
     teacher_slot_vars: dict[tuple[str, SlotKey], list[cp_model.IntVar]] = defaultdict(
         list
     )
@@ -86,26 +159,36 @@ def generate_schedule(
     for variables in group_slot_vars.values():
         model.AddAtMostOne(variables)
 
+    _add_forbidden_schedule_constraints(
+        model=model,
+        assignment_vars=assignment_vars,
+        forbidden_schedules=forbidden_schedules,
+    )
+
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = max_time_seconds
 
     status = solver.Solve(model)
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        return ScheduleResult(
-            schedule=[],
-            warnings=warnings,
-            conflicts=[
-                Conflict(
-                    type="no_valid_schedule",
-                    message=(
-                        "Не удалось построить расписание при заданной нагрузке, "
-                        "доступности преподавателей и жестких ограничениях."
-                    ),
-                    affected_groups=_unique(unit.group for unit in lesson_units),
-                    affected_teachers=_unique(unit.teacher for unit in lesson_units),
-                )
-            ],
+        return SolverOutcome(
+            result=ScheduleResult(
+                schedule=[],
+                warnings=warnings,
+                conflicts=[
+                    Conflict(
+                        type="no_valid_schedule",
+                        message=(
+                            "Не удалось построить расписание при заданной нагрузке, "
+                            "доступности преподавателей и жестких ограничениях."
+                        ),
+                        affected_groups=_unique(unit.group for unit in lesson_units),
+                        affected_teachers=_unique(
+                            unit.teacher for unit in lesson_units
+                        ),
+                    )
+                ],
+            )
         )
 
     schedule = _build_schedule_from_solution(
@@ -113,17 +196,41 @@ def generate_schedule(
         assignment_vars=assignment_vars,
         lesson_units=lesson_units,
     )
-
-    return ScheduleResult(
-        schedule=schedule,
-        warnings=warnings,
-        conflicts=[],
+    assignment_signature = _build_assignment_signature(
+        solver=solver,
+        assignment_vars=assignment_vars,
     )
+
+    return SolverOutcome(
+        result=ScheduleResult(
+            schedule=schedule,
+            warnings=warnings,
+            conflicts=[],
+        ),
+        assignment_signature=assignment_signature,
+    )
+
+
+def _add_forbidden_schedule_constraints(
+    model: cp_model.CpModel,
+    assignment_vars: dict[tuple[int, SlotKey], cp_model.IntVar],
+    forbidden_schedules: list[AssignmentSignature],
+) -> None:
+    for forbidden_schedule in forbidden_schedules:
+        matching_variables = [
+            assignment_vars[(lesson_index, slot_key)]
+            for lesson_index, slot_key in forbidden_schedule
+            if (lesson_index, slot_key) in assignment_vars
+        ]
+
+        if not matching_variables:
+            continue
+
+        model.Add(sum(matching_variables) <= len(matching_variables) - 1)
 
 
 def _build_availability_by_teacher(
     preferences: PreferencesInput,
-    fallback_slots: list[TimeSlot],
 ) -> tuple[dict[str, set[SlotKey]], list[str]]:
     availability_by_teacher: dict[str, set[SlotKey]] = {}
     warnings: list[str] = []
@@ -198,6 +305,35 @@ def _build_schedule_from_solution(
             )
 
     return sorted(schedule, key=_schedule_sort_key)
+
+
+def _build_assignment_signature(
+    solver: cp_model.CpSolver,
+    assignment_vars: dict[tuple[int, SlotKey], cp_model.IntVar],
+) -> AssignmentSignature:
+    assignments: set[tuple[int, SlotKey]] = set()
+
+    for assignment_key, variable in assignment_vars.items():
+        if solver.BooleanValue(variable):
+            assignments.add(assignment_key)
+
+    return frozenset(assignments)
+
+
+def _build_visible_schedule_signature(
+    schedule: list[ScheduleItem],
+) -> VisibleScheduleSignature:
+    return frozenset(
+        (
+            item.group,
+            item.subject,
+            item.teacher,
+            item.day,
+            item.slot,
+            item.lesson_type,
+        )
+        for item in schedule
+    )
 
 
 def _format_availability_warnings(teacher: str, warnings: list[str]) -> list[str]:

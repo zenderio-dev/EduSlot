@@ -13,25 +13,56 @@ DAY_ALIASES: dict[str, Day] = {
     "пн": "mon",
     "понедельник": "mon",
     "понедельника": "mon",
+    "понедельникам": "mon",
     "вт": "tue",
     "вторник": "tue",
     "вторника": "tue",
+    "вторникам": "tue",
     "ср": "wed",
     "среда": "wed",
     "среду": "wed",
     "среды": "wed",
+    "средам": "wed",
     "чт": "thu",
     "четверг": "thu",
     "четверга": "thu",
+    "четвергам": "thu",
     "пт": "fri",
     "пятница": "fri",
     "пятницу": "fri",
     "пятницы": "fri",
+    "пятницам": "fri",
+}
+
+SLOT_WORDS: dict[str, int] = {
+    "первая": 1,
+    "первую": 1,
+    "первой": 1,
+    "вторая": 2,
+    "вторую": 2,
+    "второй": 2,
+    "третья": 3,
+    "третью": 3,
+    "третьей": 3,
+    "четвертая": 4,
+    "четвертую": 4,
+    "четвертой": 4,
+    "пятая": 5,
+    "пятую": 5,
+    "пятой": 5,
 }
 
 DAY_PATTERN = "|".join(
     sorted(
         map(re.escape, DAY_ALIASES),
+        key=len,
+        reverse=True,
+    )
+)
+
+SLOT_WORD_PATTERN = "|".join(
+    sorted(
+        map(re.escape, SLOT_WORDS),
         key=len,
         reverse=True,
     )
@@ -57,8 +88,13 @@ def parse_teacher_preference(teacher: str, text: str) -> TeacherAvailability:
             warnings=["Не удалось определить день недели в пожелании преподавателя."],
         )
 
-    mode, start_time, end_time = _extract_time_filter(normalized_text)
-    available_slots = _build_slots(days, mode, start_time, end_time)
+    specific_slots = _extract_specific_slots(normalized_text)
+
+    if specific_slots:
+        available_slots = _build_specific_slots(days, specific_slots)
+    else:
+        mode, start_time, end_time = _extract_time_filter(normalized_text)
+        available_slots = _build_slots(days, mode, start_time, end_time)
 
     if not available_slots:
         warnings.append(
@@ -84,15 +120,27 @@ def _normalize_text(text: str) -> str:
 
 
 def _extract_days(text: str) -> list[Day]:
+    if "будни" in text or "по будням" in text:
+        return DAY_ORDER.copy()
+
     days: set[Day] = set()
 
-    range_pattern = (
+    dash_range_pattern = (
         rf"(?<![а-яa-z])({DAY_PATTERN})(?![а-яa-z])"
-        r"\s*[-–]\s*"
+        r"\s*[-–—]\s*"
         rf"(?<![а-яa-z])({DAY_PATTERN})(?![а-яa-z])"
     )
 
-    for start_alias, end_alias in re.findall(range_pattern, text):
+    for start_alias, end_alias in re.findall(dash_range_pattern, text):
+        start_day = DAY_ALIASES[start_alias]
+        end_day = DAY_ALIASES[end_alias]
+        days.update(_expand_day_range(start_day, end_day))
+
+    word_range_pattern = (
+        rf"с\s+({DAY_PATTERN})\s+по\s+({DAY_PATTERN})"
+    )
+
+    for start_alias, end_alias in re.findall(word_range_pattern, text):
         start_day = DAY_ALIASES[start_alias]
         end_day = DAY_ALIASES[end_alias]
         days.update(_expand_day_range(start_day, end_day))
@@ -115,6 +163,43 @@ def _expand_day_range(start_day: Day, end_day: Day) -> list[Day]:
     return DAY_ORDER[start_index : end_index + 1]
 
 
+def _extract_specific_slots(text: str) -> list[int]:
+    slots: set[int] = set()
+
+    range_pattern = (
+        r"(?<!\d)([1-8])\s*[-–—]\s*([1-8])\s*"
+        r"(?:пара|пары|пар|паре|пару|парой)"
+    )
+
+    for start_slot, end_slot in re.findall(range_pattern, text):
+        slots.update(_expand_slot_range(int(start_slot), int(end_slot)))
+
+    single_number_pattern = (
+        r"(?<!\d)([1-8])\s*"
+        r"(?:пара|пары|пар|паре|пару|парой)"
+    )
+
+    for slot in re.findall(single_number_pattern, text):
+        slots.add(int(slot))
+
+    word_pattern = (
+        rf"(?<![а-яa-z])({SLOT_WORD_PATTERN})(?![а-яa-z])\s+"
+        r"(?:пара|пары|паре|пару|парой)"
+    )
+
+    for slot_word in re.findall(word_pattern, text):
+        slots.add(SLOT_WORDS[slot_word])
+
+    return sorted(slots)
+
+
+def _expand_slot_range(start_slot: int, end_slot: int) -> list[int]:
+    if start_slot > end_slot:
+        return []
+
+    return list(range(start_slot, end_slot + 1))
+
+
 def _extract_time_filter(text: str) -> tuple[TimeFilterMode, str | None, str | None]:
     interval_match = re.search(
         r"с\s+(\d{1,2}(?::|\.)?\d{0,2})\s+до\s+(\d{1,2}(?::|\.)?\d{0,2})",
@@ -128,6 +213,33 @@ def _extract_time_filter(text: str) -> tuple[TimeFilterMode, str | None, str | N
             _normalize_time(interval_match.group(2)),
         )
 
+    dash_interval_match = re.search(
+        r"(?<!\d)(\d{1,2}(?::|\.)?\d{0,2})\s*[-–—]\s*"
+        r"(\d{1,2}(?::|\.)?\d{0,2})(?!\d)",
+        text,
+    )
+
+    if dash_interval_match:
+        return (
+            "between",
+            _normalize_time(dash_interval_match.group(1)),
+            _normalize_time(dash_interval_match.group(2)),
+        )
+
+    not_earlier_match = re.search(
+        r"не\s+раньше\s+(\d{1,2}(?::|\.)?\d{0,2})",
+        text,
+    )
+    if not_earlier_match:
+        return "after", _normalize_time(not_earlier_match.group(1)), None
+
+    not_later_match = re.search(
+        r"не\s+позже\s+(\d{1,2}(?::|\.)?\d{0,2})",
+        text,
+    )
+    if not_later_match:
+        return "before", None, _normalize_time(not_later_match.group(1))
+
     after_match = re.search(r"после\s+(\d{1,2}(?::|\.)?\d{0,2})", text)
     if after_match:
         return "after", _normalize_time(after_match.group(1)), None
@@ -136,11 +248,27 @@ def _extract_time_filter(text: str) -> tuple[TimeFilterMode, str | None, str | N
     if before_match:
         return "before", None, _normalize_time(before_match.group(1))
 
-    if "первая половина дня" in text or "первую половину дня" in text:
+    if "утром" in text or "утро" in text:
         return "before", None, "12:30"
 
-    if "вторая половина дня" in text or "вторую половину дня" in text:
+    if (
+        "первая половина дня" in text
+        or "первую половину дня" in text
+        or "до обеда" in text
+    ):
+        return "before", None, "12:30"
+
+    if (
+        "вторая половина дня" in text
+        or "вторую половину дня" in text
+        or "после обеда" in text
+        or "днем" in text
+        or "день" in text
+    ):
         return "after", "12:00", None
+
+    if "вечером" in text or "вечер" in text:
+        return "after", "15:30", None
 
     return "all", None, None
 
@@ -157,6 +285,17 @@ def _normalize_time(value: str) -> str:
         minutes = "00"
 
     return f"{int(hours):02d}:{int(minutes):02d}"
+
+
+def _build_specific_slots(days: list[Day], slots: list[int]) -> list[TimeSlot]:
+    result: list[TimeSlot] = []
+
+    for day in days:
+        for slot in slots:
+            if slot in LESSON_TIMES:
+                result.append(TimeSlot(day=day, slot=slot))
+
+    return result
 
 
 def _build_slots(

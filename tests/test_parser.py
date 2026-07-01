@@ -109,4 +109,138 @@ def test_interval_without_matching_lesson_returns_warning():
     assert availability.warnings == [
         "Не удалось сопоставить указанный временной интервал с сеткой занятий."
     ]
+
+
+def test_parse_teacher_preference_supports_weekday_range_with_words():
+    availability = parse_teacher_preference(
+        teacher="Ivanov",
+        text="можно с понедельника по среду после обеда",
+    )
+
+    assert availability.warnings == []
+    assert [(slot.day, slot.slot) for slot in availability.available_slots] == [
+        ("mon", 3),
+        ("mon", 4),
+        ("mon", 5),
+        ("tue", 3),
+        ("tue", 4),
+        ("tue", 5),
+        ("wed", 3),
+        ("wed", 4),
+        ("wed", 5),
+    ]
+
+
+def test_parse_teacher_preference_supports_workdays():
+    availability = parse_teacher_preference(
+        teacher="Ivanov",
+        text="по будням не раньше 14:00",
+    )
+
+    assert availability.warnings == []
+    assert [(slot.day, slot.slot) for slot in availability.available_slots] == [
+        ("mon", 4),
+        ("mon", 5),
+        ("tue", 4),
+        ("tue", 5),
+        ("wed", 4),
+        ("wed", 5),
+        ("thu", 4),
+        ("thu", 5),
+        ("fri", 4),
+        ("fri", 5),
+    ]
+
+
+def test_parse_teacher_preference_supports_morning_phrase():
+    availability = parse_teacher_preference(
+        teacher="Ivanov",
+        text="пн, ср, пт утром",
+    )
+
+    assert availability.warnings == []
+    assert [(slot.day, slot.slot) for slot in availability.available_slots] == [
+        ("mon", 1),
+        ("mon", 2),
+        ("wed", 1),
+        ("wed", 2),
+        ("fri", 1),
+        ("fri", 2),
+    ]
+
+
+def test_parse_teacher_preference_supports_evening_phrase():
+    availability = parse_teacher_preference(
+        teacher="Ivanov",
+        text="четверг вечером",
+    )
+
+    assert availability.warnings == []
+    assert [(slot.day, slot.slot) for slot in availability.available_slots] == [
+        ("thu", 5),
+    ]
+
+
+def test_parse_teacher_preference_supports_dash_time_interval():
+    availability = parse_teacher_preference(
+        teacher="Ivanov",
+        text="среда 09:00-12:30",
+    )
+
+    assert availability.warnings == []
+    assert [(slot.day, slot.slot) for slot in availability.available_slots] == [
+        ("wed", 1),
+        ("wed", 2),
+    ]
+
+
+def test_parse_teacher_preference_supports_not_later_phrase():
+    availability = parse_teacher_preference(
+        teacher="Ivanov",
+        text="вторник не позже 12:30",
+    )
+
+    assert availability.warnings == []
+    assert [(slot.day, slot.slot) for slot in availability.available_slots] == [
+        ("tue", 1),
+        ("tue", 2),
+    ]
+
+
+def test_parse_teacher_preference_supports_lesson_slot_number():
+    availability = parse_teacher_preference(
+        teacher="Ivanov",
+        text="пятница 1 пара",
+    )
+
+    assert availability.warnings == []
+    assert [(slot.day, slot.slot) for slot in availability.available_slots] == [
+        ("fri", 1),
+    ]
+
+
+def test_parse_teacher_preference_supports_lesson_slot_range():
+    availability = parse_teacher_preference(
+        teacher="Ivanov",
+        text="четверг 1-3 пары",
+    )
+
+    assert availability.warnings == []
+    assert [(slot.day, slot.slot) for slot in availability.available_slots] == [
+        ("thu", 1),
+        ("thu", 2),
+        ("thu", 3),
+    ]
+
+
+def test_parse_teacher_preference_supports_lesson_slot_word():
+    availability = parse_teacher_preference(
+        teacher="Ivanov",
+        text="понедельник первая пара",
+    )
+
+    assert availability.warnings == []
+    assert [(slot.day, slot.slot) for slot in availability.available_slots] == [
+        ("mon", 1),
+    ]
     

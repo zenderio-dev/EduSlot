@@ -1,9 +1,76 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "eduslot"
+name = "eduslot-scheduler"
 version = "0.1.0"
-description = "Automatic timetable generation module for educational groups, teachers, workloads, constraints, and conflict detection."
-requires-python = ">=3.11"
+description = "Automatic timetable generation module for educational groups, teachers, workloads and constraints."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Znamenskiy Maxim Alexandrovich" }
+]
+keywords = [
+    "timetable",
+    "scheduling",
+    "education",
+    "python",
+    "ortools"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "pydantic",
+    "ortools",
+    "openpyxl",
+]
+
+[project.optional-dependencies]
+demo = [
+    "streamlit",
+    "pandas",
+]
+docs = [
+    "sphinx",
+    "furo",
+    "myst-parser",
+    "sphinxcontrib-mermaid",
+]
+dev = [
+    "pytest",
+    "ruff",
+    "build",
+    "twine",
+]
+
+[project.urls]
+Homepage = "https://github.com/zenderio-dev/EduSlot"
+Documentation = "https://github.com/zenderio-dev/EduSlot/tree/main/docs"
+Repository = "https://github.com/zenderio-dev/EduSlot"
+Issues = "https://github.com/zenderio-dev/EduSlot/issues"
+
+[project.scripts]
+eduslot = "eduslot.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"

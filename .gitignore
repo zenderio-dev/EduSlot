@@ -219,3 +219,14 @@ __marimo__/
 
 outputs/
 docs/build/
+
+# Generated exports
+outputs/
+
+# Sphinx documentation build
+docs/build/
+
+# Python package build artifacts
+dist/
+build/
+*.egg-info/

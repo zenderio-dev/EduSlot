@@ -1,4 +1,4 @@
-.PHONY: install test run demo cli-solve cli-variants cli-metrics docs docs-clean lint format check clean
+.PHONY: install test run demo cli-solve cli-variants cli-metrics docs docs-clean build package-check lint format check clean
 
 PYTHON ?= python
 PYTHONPATH ?= src
@@ -30,6 +30,12 @@ docs:
 docs-clean:
 	$(PYTHON) -c "import shutil; shutil.rmtree('docs/build', ignore_errors=True)"
 
+build:
+	$(PYTHON) -m build
+
+package-check:
+	$(PYTHON) -m twine check dist/*
+
 lint:
 	$(PYTHON) -m ruff check src tests
 
@@ -43,3 +49,4 @@ check:
 
 clean:
 	$(PYTHON) -c "import shutil, pathlib; [shutil.rmtree(p, ignore_errors=True) for p in pathlib.Path('.').rglob('__pycache__')]"
+	$(PYTHON) -c "import shutil; shutil.rmtree('dist', ignore_errors=True); shutil.rmtree('build', ignore_errors=True); shutil.rmtree('docs/build', ignore_errors=True)"

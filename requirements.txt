@@ -5,3 +5,7 @@ pandas
 openpyxl
 pytest
 ruff
+sphinx
+furo
+myst-parser
+sphinxcontrib-mermaid

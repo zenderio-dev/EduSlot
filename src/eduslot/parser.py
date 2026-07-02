@@ -70,6 +70,7 @@ SLOT_WORD_PATTERN = "|".join(
 
 
 def parse_teacher_preference(teacher: str, text: str) -> TeacherAvailability:
+    """Parse teacher preference text into available timetable slots."""
     normalized_text = _normalize_text(text)
     warnings: list[str] = []
 
@@ -109,6 +110,7 @@ def parse_teacher_preference(teacher: str, text: str) -> TeacherAvailability:
 
 
 def parse_preference_input(preference: TeacherPreferenceInput) -> TeacherAvailability:
+    """Parse one teacher preference input object."""
     return parse_teacher_preference(
         teacher=preference.teacher,
         text=preference.text,

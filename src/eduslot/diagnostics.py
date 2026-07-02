@@ -15,6 +15,7 @@ def diagnose_schedule_inputs(
     workload: WorkloadInput,
     preferences: PreferencesInput,
 ) -> list[Conflict]:
+    """Diagnose input data before running the scheduler."""
     conflicts: list[Conflict] = []
 
     conflicts.extend(diagnose_teacher_availability(workload, preferences))
@@ -27,6 +28,7 @@ def diagnose_teacher_availability(
     workload: WorkloadInput,
     preferences: PreferencesInput,
 ) -> list[Conflict]:
+    """Check whether teachers have enough available slots."""
     teacher_lesson_counts = _build_teacher_lesson_counts(workload)
     availability_by_teacher = _build_availability_by_teacher(preferences)
     default_slots = _to_slot_keys(get_all_slots())
@@ -67,6 +69,7 @@ def diagnose_teacher_availability(
 
 
 def diagnose_group_capacity(workload: WorkloadInput) -> list[Conflict]:
+    """Check whether group workload fits into the weekly time grid."""
     available_slot_count = len(get_all_slots())
     group_lesson_counts = _build_group_lesson_counts(workload)
     teachers_by_group = _build_teachers_by_group(workload)

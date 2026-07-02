@@ -12,6 +12,7 @@ class InputDataError(ValueError):
 
 
 def load_json_file(path: str | Path) -> dict[str, Any]:
+    """Load a JSON file and return its object content."""
     file_path = Path(path)
 
     try:
@@ -31,6 +32,7 @@ def load_json_file(path: str | Path) -> dict[str, Any]:
 
 
 def load_workload(path: str | Path) -> WorkloadInput:
+    """Load and validate workload input from a JSON file."""
     data = load_json_file(path)
 
     try:
@@ -40,6 +42,7 @@ def load_workload(path: str | Path) -> WorkloadInput:
 
 
 def load_preferences(path: str | Path) -> PreferencesInput:
+    """Load and validate teacher preferences from a JSON file."""
     data = load_json_file(path)
 
     try:

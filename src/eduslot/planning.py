@@ -4,6 +4,7 @@ from eduslot.models import LessonType, WorkloadInput
 
 
 class LessonUnit(BaseModel):
+    """One lesson occurrence prepared for scheduling."""
     id: str = Field(min_length=1)
     group: str = Field(min_length=1)
     subject: str = Field(min_length=1)
@@ -17,6 +18,7 @@ class LessonUnit(BaseModel):
 
 
 def build_lesson_units(workload: WorkloadInput) -> list[LessonUnit]:
+    """Convert workload records into individual lesson units."""
     lesson_units: list[LessonUnit] = []
 
     for group in workload.groups:
@@ -45,6 +47,7 @@ def build_lesson_units(workload: WorkloadInput) -> list[LessonUnit]:
 
 
 def count_total_lessons(workload: WorkloadInput) -> int:
+    """Count total weekly lessons in workload input."""
     return sum(
         lesson.lessons_per_week
         for group in workload.groups

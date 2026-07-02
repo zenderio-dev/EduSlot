@@ -27,6 +27,7 @@ DAY_ORDER: list[Day] = ["mon", "tue", "wed", "thu", "fri"]
 
 @dataclass(frozen=True)
 class SolverOutcome:
+    """Internal result of one solver run."""
     result: ScheduleResult
     assignment_signature: AssignmentSignature | None = None
 
@@ -36,6 +37,7 @@ def generate_schedule(
     preferences: PreferencesInput,
     max_time_seconds: float = 10.0,
 ) -> ScheduleResult:
+    """Generate one schedule from workload and teacher preferences."""
     outcome = _solve_schedule(
         workload=workload,
         preferences=preferences,
@@ -52,6 +54,7 @@ def generate_schedule_variants(
     max_variants: int = 3,
     max_time_seconds: float = 10.0,
 ) -> list[ScheduleResult]:
+    """Generate several alternative schedule variants."""
     if max_variants <= 0:
         return []
 

@@ -1,4 +1,4 @@
-.PHONY: install test run demo cli-solve cli-variants cli-metrics lint format check clean
+.PHONY: install test run demo cli-solve cli-variants cli-metrics docs docs-clean lint format check clean
 
 PYTHON ?= python
 PYTHONPATH ?= src
@@ -23,6 +23,12 @@ cli-variants:
 
 cli-metrics:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m eduslot.cli metrics data/sample_load.json data/sample_preferences.json
+
+docs:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m sphinx -b html docs/source docs/build/html
+
+docs-clean:
+	$(PYTHON) -c "import shutil; shutil.rmtree('docs/build', ignore_errors=True)"
 
 lint:
 	$(PYTHON) -m ruff check src tests

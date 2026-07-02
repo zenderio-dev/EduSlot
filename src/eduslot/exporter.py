@@ -24,6 +24,7 @@ def export_schedule_to_json(
     schedule_data: ScheduleExportInput,
     path: str | Path,
 ) -> Path:
+    """Export schedule result to a JSON file."""
     output_path = Path(path)
     _ensure_parent_directory(output_path)
 
@@ -49,6 +50,7 @@ def export_schedule_to_csv(
     schedule_data: ScheduleExportInput,
     path: str | Path,
 ) -> Path:
+    """Export schedule items to a CSV file."""
     output_path = Path(path)
     _ensure_parent_directory(output_path)
 
@@ -68,6 +70,7 @@ def export_schedule_to_xlsx(
     schedule_data: ScheduleExportInput,
     path: str | Path,
 ) -> Path:
+    """Export schedule items to an XLSX workbook."""
     output_path = Path(path)
     _ensure_parent_directory(output_path)
 

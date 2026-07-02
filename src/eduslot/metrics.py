@@ -7,6 +7,7 @@ from eduslot.time_grid import LESSON_TIMES
 
 
 class ScheduleMetrics(BaseModel):
+    """Summary metrics for a generated schedule."""
     total_lessons: int = Field(ge=0)
     lessons_per_group: dict[str, int] = Field(default_factory=dict)
     lessons_per_teacher: dict[str, int] = Field(default_factory=dict)
@@ -15,6 +16,7 @@ class ScheduleMetrics(BaseModel):
 
 
 def summarize_schedule_metrics(schedule: list[ScheduleItem]) -> ScheduleMetrics:
+    """Calculate all supported schedule metrics."""
     return ScheduleMetrics(
         total_lessons=len(schedule),
         lessons_per_group=count_lessons_per_group(schedule),
@@ -25,6 +27,7 @@ def summarize_schedule_metrics(schedule: list[ScheduleItem]) -> ScheduleMetrics:
 
 
 def count_lessons_per_group(schedule: list[ScheduleItem]) -> dict[str, int]:
+    """Count lessons for each group."""
     counter: Counter[str] = Counter()
 
     for item in schedule:
@@ -34,6 +37,7 @@ def count_lessons_per_group(schedule: list[ScheduleItem]) -> dict[str, int]:
 
 
 def count_lessons_per_teacher(schedule: list[ScheduleItem]) -> dict[str, int]:
+    """Count lessons for each teacher."""
     counter: Counter[str] = Counter()
 
     for item in schedule:
@@ -43,6 +47,7 @@ def count_lessons_per_teacher(schedule: list[ScheduleItem]) -> dict[str, int]:
 
 
 def count_group_windows(schedule: list[ScheduleItem]) -> dict[str, int]:
+    """Count total timetable windows for each group."""
     windows_by_day = count_group_windows_by_day(schedule)
 
     result: dict[str, int] = {}
@@ -56,6 +61,7 @@ def count_group_windows(schedule: list[ScheduleItem]) -> dict[str, int]:
 def count_group_windows_by_day(
     schedule: list[ScheduleItem],
 ) -> dict[str, dict[Day, int]]:
+    """Count timetable windows for each group by day."""
     occupied_slots = _build_group_day_slots(schedule)
 
     result: dict[str, dict[Day, int]] = {}

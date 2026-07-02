@@ -21,6 +21,7 @@ def validate_schedule(
     workload: WorkloadInput,
     preferences: PreferencesInput,
 ) -> list[Conflict]:
+    """Validate generated schedule against workload and preferences."""
     conflicts: list[Conflict] = []
 
     conflicts.extend(validate_teacher_overlaps(schedule))
@@ -32,6 +33,7 @@ def validate_schedule(
 
 
 def validate_teacher_overlaps(schedule: list[ScheduleItem]) -> list[Conflict]:
+    """Find cases where one teacher has several lessons in the same slot."""
     grouped_items: dict[tuple[str, SlotKey], list[ScheduleItem]] = defaultdict(list)
 
     for item in schedule:
@@ -63,6 +65,7 @@ def validate_teacher_overlaps(schedule: list[ScheduleItem]) -> list[Conflict]:
 
 
 def validate_group_overlaps(schedule: list[ScheduleItem]) -> list[Conflict]:
+    """Find cases where one group has several lessons in the same slot."""
     grouped_items: dict[tuple[str, SlotKey], list[ScheduleItem]] = defaultdict(list)
 
     for item in schedule:
@@ -97,6 +100,7 @@ def validate_required_load(
     schedule: list[ScheduleItem],
     workload: WorkloadInput,
 ) -> list[Conflict]:
+    """Check that schedule contains the required workload."""
     expected_counts = _build_expected_lesson_counts(workload)
     actual_counts = _build_actual_lesson_counts(schedule)
 
@@ -143,6 +147,7 @@ def validate_teacher_availability(
     schedule: list[ScheduleItem],
     preferences: PreferencesInput,
 ) -> list[Conflict]:
+    """Check that lessons respect teacher availability preferences."""
     availability_by_teacher = _build_availability_by_teacher(preferences)
     conflicts: list[Conflict] = []
 

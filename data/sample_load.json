@@ -12,8 +12,14 @@
         {
           "subject": "Databases",
           "teacher": "Petrov",
-          "lessons_per_week": 3,
+          "lessons_per_week": 2,
           "lesson_type": "lecture"
+        },
+        {
+          "subject": "Algorithms",
+          "teacher": "Smirnova",
+          "lessons_per_week": 2,
+          "lesson_type": "seminar"
         }
       ]
     },
@@ -30,6 +36,41 @@
           "subject": "Databases",
           "teacher": "Petrov",
           "lessons_per_week": 2,
+          "lesson_type": "practice"
+        },
+        {
+          "subject": "English",
+          "teacher": "Kuznetsova",
+          "lessons_per_week": 1,
+          "lesson_type": "seminar"
+        }
+      ]
+    },
+    {
+      "name": "Group C",
+      "lessons": [
+        {
+          "subject": "Python",
+          "teacher": "Ivanov",
+          "lessons_per_week": 2,
+          "lesson_type": "lab"
+        },
+        {
+          "subject": "Algorithms",
+          "teacher": "Smirnova",
+          "lessons_per_week": 2,
+          "lesson_type": "lecture"
+        },
+        {
+          "subject": "Web Development",
+          "teacher": "Sidorov",
+          "lessons_per_week": 2,
+          "lesson_type": "practice"
+        },
+        {
+          "subject": "English",
+          "teacher": "Kuznetsova",
+          "lessons_per_week": 1,
           "lesson_type": "practice"
         }
       ]

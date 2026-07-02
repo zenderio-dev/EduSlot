@@ -1,11 +1,13 @@
-pydantic>=2.0
+pydantic
 ortools
-streamlit
-pandas
 openpyxl
+pandas
+streamlit
 pytest
 ruff
 sphinx
 furo
 myst-parser
 sphinxcontrib-mermaid
+build
+twine
